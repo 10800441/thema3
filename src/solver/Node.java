@@ -21,9 +21,10 @@ class Node {
         double degree;
         double clusteringC;
         int infectionTime;
+        int recoverTime;
 
-
-        public Node(int number, ArrayList<Connection> connections, boolean vaccinated, String state,double degree, double clusteringC, int infectionTime) {
+        public Node(int number, ArrayList<Connection> connections, boolean vaccinated,
+                    String state,double degree, double clusteringC, int infectionTime, int recoverTime) {
             this.number = number;
             this.connections = connections;
             this.vaccinated = vaccinated;
@@ -31,6 +32,7 @@ class Node {
             this.degree = degree;
             this.clusteringC = clusteringC;
             this.infectionTime = infectionTime;
+            this.recoverTime = recoverTime;
         }
 
     public Node(int number, ArrayList<Connection> connections, boolean vaccinated, String state) {
@@ -41,6 +43,7 @@ class Node {
     }
 
         public String toString(){
-            return "Agent " + number + " connected to " + connections + " is  vaccinated: " + vaccinated + ", has disease: " + state + "; Ti " + infectionTime;
+            return "Agent " + number + " connected to " + connections + " is  vaccinated: " + vaccinated +
+                    ", has disease: " + state + "; Ti " + infectionTime + ", Tr " + recoverTime;
         }
     }

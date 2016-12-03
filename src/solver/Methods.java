@@ -1,8 +1,5 @@
 package solver;
-import com.sun.org.apache.bcel.internal.generic.POP;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.*;
 
 public class Methods {
@@ -27,7 +24,7 @@ public class Methods {
 
     // Check if an equivalent relation already existst
     public static boolean alreadyExists(Connection newConnect, ArrayList<Node> population) {
-        ArrayList<Connection> connctionList= makeConnctionList(population);
+        ArrayList<Connection> connctionList= Statistics.makeConnctionList(population);
         for (Connection oldConnection : connctionList) {
             Connection reverseConnect = new Connection(oldConnection.nodeNumber2, oldConnection.nodeNumber1);
             if (oldConnection == newConnect || reverseConnect == newConnect) {
@@ -124,52 +121,58 @@ public static ArrayList<Node> generateUniformConnections(ArrayList<Node> populat
 
 
     // Disease initialization
-    public static ArrayList<Node> spreadDisease(ArrayList<Node> healthyPopulation) {
+    public static ArrayList<Node> spreadDisease(ArrayList<Node> healthyPopulation,
+                                                double TRANSMISSION_RATE,
+                                                double RECOVER_RATE,
+                                                int INFECTIOUS_TIME) {
         System.out.println("initialising disease sequence");
         Random rand = new Random();
         rand.nextInt();
         Node infectionSource = healthyPopulation.get(rand.nextInt(healthyPopulation.size()));
-
+        infectionSource.infectionTime = 1;
         // This agent mutates (even if vaccinated is true)
         infectionSource.state = "infected";
 
         // Recursive step breadth first search
         Queue<Node> memory = new LinkedList<Node>();
-        ArrayList<Node> diseasedPopulation = spreadBFS(infectionSource, healthyPopulation, 1, memory);
+        ArrayList<Node> diseasedPopulation = spreadBFS(infectionSource, healthyPopulation, 1,
+                memory, TRANSMISSION_RATE, RECOVER_RATE, INFECTIOUS_TIME);
 
         //ArrayList<Node> diseasedPopulation = healthyPopulation;
         return diseasedPopulation;
     }
 
     // if a person is not vaccinated and is suceptible this person will get infected.
-    public static ArrayList<Node> spreadBFS(Node diseasedNode, ArrayList<Node> healthyPopulation ,int time, Queue<Node> memory) {
-        time += 10;
-        System.out.println(time);
+    public static ArrayList<Node> spreadBFS(Node diseasedNode,
+                                            ArrayList<Node> healthyPopulation,
+                                            int time, Queue<Node> memory,
+                                            double TRANSMISSION_RATE,
+                                            double RECOVER_RATE, int INFECTIOUS_TIME) {
+        time += 1;
+        Random rand = new Random();
+        // From suceptible to infectious
         for (Connection connection : diseasedNode.connections) {
             Node targetNode = healthyPopulation.get(connection.nodeNumber2);
-            if (!targetNode.vaccinated && targetNode.state.equals("suceptible")) {
+            double boundry = rand.nextDouble();
+            if (!targetNode.vaccinated && targetNode.state.equals("suceptible") && boundry <= TRANSMISSION_RATE) {
                 targetNode.infectionTime = time;
                 targetNode.state = "infected";
                 memory.add(targetNode);
             }
+
+        }
+
+        //from infectious to recovered
+        for (Node node: healthyPopulation){
+            double recoverBoundry = rand.nextDouble();
+            if(node.state.equals("infected") &&  recoverBoundry < RECOVER_RATE && node.infectionTime <=  (node.infectionTime + INFECTIOUS_TIME)) {
+                node.state ="recovered";
+                node.recoverTime =time;
+                //for a SIS-model:  node.state.equals("suceptible")
+            }
         }
         while(memory.size() > 0){
-            spreadBFS(memory.poll(), healthyPopulation, time, memory);
-        }
-        return healthyPopulation;
-    }
-
-    public static ArrayList<Node> spread(Node diseasedNode, ArrayList<Node> healthyPopulation ,int time) {
-        time += 10;
-        System.out.println(time);
-        for (Connection connection : diseasedNode.connections) {
-            Node targetNode = healthyPopulation.get(connection.nodeNumber2);
-            if (!targetNode.vaccinated && targetNode.state.equals("suceptible")) {
-                targetNode.infectionTime = time;
-                targetNode.state = "infected";
-                spread(targetNode, healthyPopulation, time);
-            }
-
+            spreadBFS(memory.poll(), healthyPopulation, time, memory, TRANSMISSION_RATE, RECOVER_RATE, INFECTIOUS_TIME);
         }
         return healthyPopulation;
     }
@@ -179,101 +182,4 @@ public static ArrayList<Node> generateUniformConnections(ArrayList<Node> populat
 
 
 
-
-    // Calculations
-    public static double statistics(ArrayList<Node> population, int POP_SIZE) {
-        double count = 0;
-        for (Node node : population) {
-            if (node.state.equals("infected")) count++;
-        }
-        double statistic = (count / POP_SIZE) * 100;
-        return statistic;
-    }
-    static private ArrayList<Connection> makeConnctionList(ArrayList<Node> population){
-    ArrayList<Connection> connectionList = new ArrayList<>();
-        for (Node node:population) {
-            for (Connection connection : node.connections)
-                connectionList.add(connection);
-        }
-        return connectionList;
-    }
-
-    static public double[] networkSpecs(ArrayList<Node> population, int connections, int POP_SIZE) {
-
-        double[] specs = new double[3];
-        double averageDegree = (double) (connections*2) / POP_SIZE;
-        ArrayList<Connection> connectionList = makeConnctionList(population);
-
-
-        double sumSquaredError = 0;
-        double clusteringSum = 0;
-
-        for(int i = 0; i < POP_SIZE; i++) {
-
-            double nodeDegree = 0;
-            ArrayList<Integer> secondaryNodes = new ArrayList<>();
-
-            for (Connection connection : connectionList) {
-
-                if(i == connection.nodeNumber1) {
-                    nodeDegree++;
-                    secondaryNodes.add(connection.nodeNumber2);
-
-                } else if(i == connection.nodeNumber2){
-                    nodeDegree++;
-                    secondaryNodes.add(connection.nodeNumber1);
-                }
-            }
-            population.get(i).degree = nodeDegree;
-            double squaredError = Math.pow((double)(nodeDegree-averageDegree),2);
-            sumSquaredError += squaredError;
-
-            // clustering coeff
-            double clustering = 0;
-            int triangles = 0;
-            Set<Integer> set = new HashSet<Integer>(secondaryNodes);
-            for( Connection conn: connectionList){
-                for (int k: set){
-                    for(int l: set){
-                        if(conn.nodeNumber1 == k && conn.nodeNumber2 == l ||
-                                conn.nodeNumber2 == k && conn.nodeNumber1 == l){
-                            triangles++;
-
-                        }
-                    }
-                }
-            }
-            clustering = (double) (triangles*2)/(nodeDegree*(nodeDegree-1));
-            population.get(i).clusteringC = clustering;
-            clusteringSum += clustering;
-
-
-        }
-
-        double standardDeviationDegree = Math.sqrt(sumSquaredError/POP_SIZE);
-
-        double clusteringsCoefficient = clusteringSum/POP_SIZE;
-        specs[0]= averageDegree;
-        specs[1]= standardDeviationDegree;
-        specs[2]=clusteringsCoefficient;
-        return specs;
-    }
-
-    public static void toCsv(String nodesName, String edgesName, ArrayList<Node> population) {
-        try{
-            FileWriter nodesWriter = new FileWriter(nodesName);
-            FileWriter edgesWriter = new FileWriter(edgesName);
-            for (Node node:population) {
-                nodesWriter.append(node.number + "," + node.vaccinated + ","+ node.state + "\n");
-                for( Connection connection: node.connections) {
-                    edgesWriter.append("" + connection.nodeNumber1 +"," + connection.nodeNumber2 + "\n");
-                }
-            }
-
-            edgesWriter.close();
-            nodesWriter.close();
-            }catch(IOException ex){
-                System.out.println(ex);
-        }
-    }
 }

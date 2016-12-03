@@ -4,16 +4,23 @@ class Main {
 
     public static void main(String[] args) {
         // Variables for the population
-        int POP_SIZE = 100;
-        // amount of connections
-        int CONNECT = 600;
-        // connectivity between agents
-        int VAC_RATE = 80;
+        final int POP_SIZE = 100;
+
+        // percentage of the population which is resistant to the disease
+        final int VAC_RATE = 0;
 
         //Variables for the disease
-        int TRANSMISSION_RATE = 100;
+        // chance of spreading the disease
+        final double TRANSMISSION_RATE = 0.9;
+        // the chance of recovery after the infectious time
+        final double RECOVER_RATE = 0.01;
+        // the duration of being infectious
+        final int INFECTIOUS_TIME = 1;
 
+        //
 
+        int CONNECT = 600;
+        // connectivity between agents
         ArrayList<Node> HospitalPopulation = new ArrayList<>();
         double Hdegree = 6.5;
         double Hsd = 5.3;
@@ -42,9 +49,11 @@ class Main {
             RandomPopulation.add(new Node(i, new ArrayList<>(), false, "suceptible"));
             UniformPopulation.add(new Node(i, new ArrayList<>(), false, "suceptible"));
         }
-        // All populations will have the same initial vacciantion rates
+        // All populations will have the same initial antibiotic usage rates
+        // Empirical population...
         HospitalPopulation = Methods.generateVaccinated(HospitalPopulation, VAC_RATE, POP_SIZE);
         SocialPopulation = Methods.generateVaccinated(SocialPopulation, VAC_RATE, POP_SIZE);
+       ///
         SmallWorldPopulation = Methods.generateVaccinated(SmallWorldPopulation, VAC_RATE, POP_SIZE);
         RandomPopulation = Methods.generateVaccinated(RandomPopulation, VAC_RATE, POP_SIZE);
         UniformPopulation = Methods.generateVaccinated(UniformPopulation, VAC_RATE, POP_SIZE);
@@ -54,9 +63,9 @@ class Main {
         RandomPopulation = Methods.generateRandomConnections(RandomPopulation, POP_SIZE, CONNECT);
         SmallWorldPopulation = Methods.generateSmallWorldConnections(SmallWorldPopulation, POP_SIZE, CONNECT);
 
-        double[] UniformNetworkSpecifics = Methods.networkSpecs(UniformPopulation, CONNECT, POP_SIZE);
-        double[] RandomNetworkSpecifics = Methods.networkSpecs(RandomPopulation, CONNECT, POP_SIZE);
-        double[] SmallWorldNetworkSpecifics = Methods.networkSpecs(SmallWorldPopulation, CONNECT, POP_SIZE);
+        double[] UniformNetworkSpecifics = Statistics.networkSpecs(UniformPopulation, CONNECT, POP_SIZE);
+        double[] RandomNetworkSpecifics = Statistics.networkSpecs(RandomPopulation, CONNECT, POP_SIZE);
+        double[] SmallWorldNetworkSpecifics = Statistics.networkSpecs(SmallWorldPopulation, CONNECT, POP_SIZE);
 
 
         // Write to .csv
@@ -70,37 +79,37 @@ class Main {
         System.out.println("SW sd degree " + SmallWorldNetworkSpecifics[1]);
         System.out.println("");
 
-        double cleanUniform = Methods.statistics(UniformPopulation, POP_SIZE);
-        System.out.println("at init: " + cleanUniform + "% of the population is diseased ");
+        UniformPopulation = Methods.spreadDisease(UniformPopulation, TRANSMISSION_RATE, RECOVER_RATE, INFECTIOUS_TIME);
+        RandomPopulation = Methods.spreadDisease(RandomPopulation, TRANSMISSION_RATE, RECOVER_RATE, INFECTIOUS_TIME);
+        SmallWorldPopulation = Methods.spreadDisease(SmallWorldPopulation, TRANSMISSION_RATE, RECOVER_RATE, INFECTIOUS_TIME);
 
-        printPop(UniformPopulation);
-        UniformPopulation = Methods.spreadDisease(UniformPopulation);
+        double diseasedUniform = Statistics.statistics(UniformPopulation, POP_SIZE);
+        System.out.println("at peak U: " + diseasedUniform + "% of the population is diseased ");
+
+        double diseasedRandom = Statistics.statistics(RandomPopulation, POP_SIZE);
+        System.out.println("at peak R: " + diseasedRandom + "% of the population is diseased ");
+
+        double diseasedSW = Statistics.statistics(SmallWorldPopulation, POP_SIZE);
+        System.out.println("at peak WS: " + diseasedSW + "% of the population is diseased ");
+
+        int[][] uniformData = Statistics.get_timeHistogram(UniformPopulation);
+        int[][] randomData = Statistics.get_timeHistogram(RandomPopulation);
+        int[][] sWData = Statistics.get_timeHistogram(SmallWorldPopulation);
 
 
-        //RandomPopulation = Methods.spreadDisease(RandomPopulation);
-        //SmallWorldPopulation = Methods.spreadDisease(SmallWorldPopulation);
-
-printPop(UniformPopulation);
-        double diseasedUniform = Methods.statistics(UniformPopulation, POP_SIZE);
-        System.out.println("at peak: " + diseasedUniform + "% of the population is diseased ");
-/*
-        double diseasedRandom = Methods.statistics(RandomPopulation, POP_SIZE);
-        System.out.println("at init: " + diseasedRandom + "% of the population is diseased ");
-
-        double diseasedSW = Methods.statistics(SmallWorldPopulation, POP_SIZE);
-        System.out.println("at init: " + diseasedSW + "% of the population is diseased ");
-
-        Methods.toCsv("C:\\Users\\marty_000\\PycharmProjects\\ESBLspread\\UNodes1.csv",
+        Statistics.toCsv("C:\\Users\\marty_000\\PycharmProjects\\ESBLspread\\UNodes1.csv",
                 "C:\\Users\\marty_000\\PycharmProjects\\ESBLspread\\UEdges1.csv",
-                UniformPopulation);
-        Methods.toCsv("C:\\Users\\marty_000\\PycharmProjects\\ESBLspread\\RNodes1.csv",
+                "C:\\Users\\marty_000\\PycharmProjects\\ESBLspread\\UStats1.csv",
+                UniformPopulation, uniformData);
+        Statistics.toCsv("C:\\Users\\marty_000\\PycharmProjects\\ESBLspread\\RNodes1.csv",
                 "C:\\Users\\marty_000\\PycharmProjects\\ESBLspread\\REdges1.csv",
-                RandomPopulation);
-        Methods.toCsv("C:\\Users\\marty_000\\PycharmProjects\\ESBLspread\\SWNodes1.csv",
+                "C:\\Users\\marty_000\\PycharmProjects\\ESBLspread\\RStats1.csv",
+                RandomPopulation, randomData);
+        Statistics.toCsv("C:\\Users\\marty_000\\PycharmProjects\\ESBLspread\\SWNodes1.csv",
                 "C:\\Users\\marty_000\\PycharmProjects\\ESBLspread\\SWEdges1.csv",
-                SmallWorldPopulation);
-
-*/    }
+                "C:\\Users\\marty_000\\PycharmProjects\\ESBLspread\\SWStats1.csv",
+                SmallWorldPopulation, sWData);
+    }
 
     static private void printPop(ArrayList<Node> population) {
         for (Node node : population) {
